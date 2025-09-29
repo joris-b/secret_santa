@@ -1,20 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[10]:
 
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Sep  7 19:29:43 2022
-
-@author: joris
-"""
-#%%
 #Libraries specific to the mail api
 #Full tutorial : https://developers.google.com/gmail/api/quickstart/python
 
+# Need to clarify all the imports
 from __future__ import print_function
 
 import os.path
@@ -29,23 +20,16 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-#%%
-#Libraries
+# Libraries used for reading the excel 
+# and the random draw
 import pandas as pd
 import numpy as np
 import random
-#import smtplib
-#from email.mime.text import MIMEText
-#from email.mime.multipart import MIMEMultipart
-#import requests
-#import os
 
-#%%
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://mail.google.com/']
 
-#%%
-def example():
+def mailExample():
     """Shows basic usage of the Gmail API.
     Lists the user's Gmail labels.
     """
@@ -84,65 +68,89 @@ def example():
         # TODO(developer) - Handle errors from gmail API.
         print(f'An error occurred: {error}')
 
-#%%
-#if __name__ == '__main__':
-#    example()
+def gmail_send_message(x_recipient, x_content):
+    """
+    Sends an email using the Gmail API to a specified recipient with the provided content.
 
-#%%
-def gmail_send_message(to,content):
-    
+    Args:
+        x_recipient (str): The email address of the recipient.
+        x_content (str): The content of the email message.
+
+    Returns:
+        dict or None: The response from the Gmail API if the message is sent successfully, or None if an error occurs.
+    """
     if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        l_creds = Credentials.from_authorized_user_file('token.json', SCOPES)
     # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+    if not l_creds or not l_creds.valid:
+        if l_creds and l_creds.expired and l_creds.refresh_token:
+            l_creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(
+            l_flow = InstalledAppFlow.from_client_secrets_file(
                 'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
+            l_creds = l_flow.run_local_server(port=0)
         # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
+        with open('token.json', 'w') as l_token:
+            l_token.write(l_creds.to_json())
 
 
     try:
-        service = build('gmail', 'v1', credentials=creds)
-        message = EmailMessage()
+        l_service = build('gmail', 'v1', credentials=l_creds)
+        l_message = EmailMessage()
 
-        message.set_content(content)
+        l_message.set_content(x_content)
 
-        message['To'] = to
-        message['From'] = "sayanel.jb@gmail.com" #replace with your own mail
-        message['Subject'] = "Secret Santa NO NAME"
+        l_message['To'] = x_recipient
+        l_message['From'] = "your.email@gmail.com" #replace with your own mail
+        l_message['Subject'] = "Secret Santa"
 
         # encoded message
-        encoded_message = base64.urlsafe_b64encode(message.as_bytes())             .decode()
+        l_encoded_message = base64.urlsafe_b64encode(l_message.as_bytes()).decode()
 
-        create_message = {
-            'raw': encoded_message
+        l_create_message = {
+            'raw': l_encoded_message
         }
         # pylint: disable=E1101
-        send_message = (service.users().messages().send
-                        (userId="me", body=create_message).execute())
-        print(F'Message Id: {send_message["id"]}')
-    except HttpError as error:
-        print(F'An error occurred: {error}')
-        send_message = None
-    return send_message
+        l_send_message = (l_service.users().messages().send
+                        (userId="me", body=l_create_message).execute())
+        print(F'Message Id: {l_send_message["id"]}')
+    except HttpError as l_error:
+        print(F'An error occurred: {l_error}')
+        l_send_message = None
+    return l_send_message
 
-
-#%%
 #Create the message
-def createMsg(chosenPerson):
-    return "Ho ho hoo ! Cette annee, tu offres un cadeau a : " + (chosenPerson)
+def createMsg(x_chosenPerson):
+    return "Ho ho hoo ! Cette annee, tu offres un cadeau a : " + (x_chosenPerson)
     
-#%%
 #Extract info from excel file
-def getExcelInfo(fileName):
-    dataFrame = pd.read_excel(fileName)
-    data = dataFrame.to_numpy()
-    return data
+def getExcelInfo(x_fileName):
+        """
+        Extracts two tables from the given Excel file: one from the 'occurrence' tab and one from the 'avoidance' tab.
+        Raises a ValueError if either tab does not exist.
+
+        Args:
+            x_fileName (str): Path to the Excel file.
+
+        Returns:
+            tuple: (occurrence_table, avoidance_table) as numpy arrays.
+        """
+        try:
+            l_xls = pd.ExcelFile(x_fileName)
+        except Exception as l_err:
+            raise ValueError(f"Could not open Excel file: {l_err}")
+
+        l_required_sheets = ['occurrence', 'avoidance']
+        l_missing_sheets = [l_sheet for l_sheet in l_required_sheets if l_sheet not in l_xls.sheet_names]
+        if l_missing_sheets:
+            raise ValueError(f"Missing required sheet(s): {', '.join(l_missing_sheets)}")
+
+        l_occurrenceDf = pd.read_excel(l_xls, sheet_name='occurrence')
+        l_avoidanceDf = pd.read_excel(l_xls, sheet_name='avoidance')
+
+        l_occurrenceTable = l_occurrenceDf.to_numpy()
+        l_avoidanceTable = l_avoidanceDf.to_numpy()
+        return (l_occurrenceTable, l_avoidanceTable)
    
 #%%
 #Create a function that return True when a least one of the names is free
@@ -152,67 +160,59 @@ def namesRemaining(nameDict):
         result = result or remain
     return result
 
-#%%
 #Manage the exclusion between people (mostly for couples)
 def isAllowed(name1, name2):
     result = True
-    if (name1 == "Alex" and name2 == "Julie" 
-        or name1 == "Julie" and name2 == "Alex" 
-        or name1 == "Fabien" and name2 == "Pauline" 
-        or name1 == "Pauline" and name2 == "Fabien" 
-        or name1 == "Evans" and name2 == "Lisa" 
-        or name1 == "Lisa" and name2 == "Evans" 
-        or name1 == "Samy" and name2 == "Lucie" 
-        or name1 == "Lucie" and name2 == "Samy"):
-            result = False
+    # Function to complete later according to 
+    # tab avoidance in the excel file
     
     return result   
 
     
 #%%
 #Process the selection
-def selectNames(data):
-    storage = dict() #Store the selected name for everyone
-    names = list(data[:,0])
+def randomDraw(x_data):
+    l_storage = dict() #Store the selected name for everyone
+    l_names = list(x_data[:,0])
     #Dictionnary to check if the person is already picked for someone else
-    namesFree = dict()
-    for name in names:
-        namesFree[name] = True
+    l_namesFree = dict()
+    for l_name in l_names:
+        l_namesFree[l_name] = True
     
     #Use this loop to make sure that every name is picked in the end
-    while namesRemaining(namesFree):
+    while namesRemaining(l_namesFree):
         #List of the indexes of the names (in initial order then shuffled)
-        indexes = list()
-        for i in range(np.size(names)):
-            indexes.append(i)
-        shuffledIndexes = indexes.copy()
+        l_indexes = list()
+        for l_i in range(np.size(l_names)):
+            l_indexes.append(l_i)
+        l_shuffledIndexes = l_indexes.copy()
         #we want to shuffle indexes, not names
-        random.shuffle(shuffledIndexes)
+        random.shuffle(l_shuffledIndexes)
 
         #Pick the names one by one
-        for i in shuffledIndexes:
-            occurences = data[i, 2:] #The number start at row 3
-            maxOc = np.max(occurences) + 1
-            #Create a list of possibilities to adjust weights according to the number of occurence
-            possibilities = list()
-            for j in range(np.size(names)): #Add verification to avoid multiple and self picking
-                if(names[i] != names[j] and namesFree[names[j]]
-                   and isAllowed(names[i], names[j])):
-                    for _ in range(maxOc - occurences[j]):
-                        possibilities.append(names[j])
+        for l_i in l_shuffledIndexes:
+            l_occurences = data[l_i, 2:] #The number start at row 3
+            l_maxOc = np.max(l_occurences) + 1
+            # Create a list of possibilities to adjust weights according to the number of occurence
+            l_possibilities = list()
+            for l_j in range(np.size(l_names)): #Add verification to avoid multiple and self picking
+                if(l_names[l_i] != l_names[l_j] and l_namesFree[l_names[l_j]]
+                   and isAllowed(l_names[l_i], names[l_j])):
+                    for _ in range(l_maxOc - l_occurences[l_j]):
+                        l_possibilities.append(l_names[l_j])
             
             try:
-                chosenName = random.choice(possibilities)
+                l_chosenName = random.choice(l_possibilities)
             except IndexError:
                 print("Possibility list empty, clearing the names and restarting")
-                for name in names:
-                    namesFree[name] = True
-                    storage[name] = ''
+                for l_name in l_names:
+                    l_namesFree[l_name] = True
+                    l_storage[l_name] = ''
             else:
-                namesFree[chosenName] = False
-                storage[names[i]] = chosenName
+                l_namesFree[l_chosenName] = False
+                l_storage[l_names[l_i]] = l_chosenName
                 
-    return storage
+    return l_storage
 
 
 #%%
@@ -229,7 +229,8 @@ if __name__ == '__main__':
     for name in tirage.keys():        
         print("Trying to send mail to : " + name)
         try:
-            gmail_send_message(mails[name],createMsg(tirage[name]))
+            # Commented during development phase
+            # gmail_send_message(mails[name],createMsg(tirage[name]))
             print('Mail sent succesfully to %s'%(name)) 
         except Exception as ex:
             print('Something went wrong... : ', ex)

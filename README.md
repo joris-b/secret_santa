@@ -8,7 +8,7 @@ The algorithm aims to generate a weighted draw from an Excel file containing the
 
 ### Excel file
 
-The excel file uses mainly a tab *occurence* to count the number of times each person has offered to other people. You can find a [template](./template.ods) to use as a start.
+The excel file uses mainly a tab *occurrence* to count the number of times each person has offered to other people. You can find a [template](./template.ods) to use as a start.
 
 The table is in the following format : 
 
@@ -29,7 +29,7 @@ There also is a tab *avoidance* to state if someone should never pick someone el
 
 ### Probability weighting
 
-The weighted draw is generated from the tab *occurence* from the excel. It picks the names in a random order and for each person the algorithm :
+The weighted draw is generated from the tab *occurrence* from the excel. It picks the names in a random order and for each person the algorithm :
 
 - counts the maximum number of time the person picked each person, and add 1 to this number (called $maxOcc$)
 - create a list of possibility by removing the names already picked and the people in the *avoidance* tab
