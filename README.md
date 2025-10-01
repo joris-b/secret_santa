@@ -21,6 +21,8 @@ The table is in the following format :
 
 In this example, Laa-Laa offered a gift 3 time to Tinky Winky and 2 times to Po, and never picked Dipsy.
 
+NB : In this table, the names on the columns and the rows must be in the same order to consider the occurrences properly.
+
 There also is a tab *avoidance* to state if someone should never pick someone else in particular. Simply add the names in the table on the excel like this :
 
 | Name  | To avoid |
