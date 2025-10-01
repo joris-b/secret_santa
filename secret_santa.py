@@ -29,7 +29,8 @@ import random
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://mail.google.com/']
 
-def mailExample():
+# --------------------------------------------------------------------
+def checkAPI():
     """Shows basic usage of the Gmail API.
     Lists the user's Gmail labels.
     """
@@ -68,6 +69,7 @@ def mailExample():
         # TODO(developer) - Handle errors from gmail API.
         print(f'An error occurred: {error}')
 
+# --------------------------------------------------------------------
 def gmail_send_message(x_recipient, x_content):
     """
     Sends an email using the Gmail API to a specified recipient with the provided content.
@@ -118,11 +120,8 @@ def gmail_send_message(x_recipient, x_content):
         print(F'An error occurred: {l_error}')
         l_send_message = None
     return l_send_message
-
-#Create the message
-def createMsg(x_chosenPerson):
-    return "Ho ho hoo ! Cette annee, tu offres un cadeau a : " + (x_chosenPerson)
     
+# --------------------------------------------------------------------
 #Extract info from excel file
 def getExcelInfo(x_fileName):
         """
@@ -152,34 +151,44 @@ def getExcelInfo(x_fileName):
         l_avoidanceTable = l_avoidanceDf.to_numpy()
         return (l_occurrenceTable, l_avoidanceTable)
    
-#%%
-#Create a function that return True when a least one of the names is free
-def namesRemaining(nameDict):
-    result = False
-    for remain in nameDict.values():
-        result = result or remain
-    return result
+# --------------------------------------------------------------------
+def namesRemaining(x_nameDict):
+    """
+    Check if there are any names remaining to be assigned.
+    Args:
+        x_nameDict (dict): Dictionary of names with boolean values.
+    Returns:
+        bool: True if at least one name remains, False otherwise.
+    """
+    l_result = any(x_nameDict.values())
+    return l_result
 
-#Manage the exclusion between people (mostly for couples)
-def isAllowed(name1, name2):
+# --------------------------------------------------------------------
+def isAllowed(x_name1, x_name2):
+    """
+    Determine if x_name1 is allowed to be assigned to x_name2.
+    Args:
+        x_name1 (str): Name of the giver.
+        x_name2 (str): Name of the receiver.
+    Returns:
+        bool: True if assignment is allowed, False otherwise.
+    """
     result = True
     # Function to complete later according to 
     # tab avoidance in the excel file
     
     return result   
 
-    
-#%%
-#Process the selection
-def randomDraw(x_data):
+# --------------------------------------------------------------------
+def process(x_data):
     l_storage = dict() #Store the selected name for everyone
     l_names = list(x_data[:,0])
-    #Dictionnary to check if the person is already picked for someone else
+    # Dictionary to check if the person is already picked for someone else
     l_namesFree = dict()
     for l_name in l_names:
         l_namesFree[l_name] = True
     
-    #Use this loop to make sure that every name is picked in the end
+    # Use this loop to make sure that every name is picked in the end
     while namesRemaining(l_namesFree):
         #List of the indexes of the names (in initial order then shuffled)
         l_indexes = list()
@@ -191,14 +200,14 @@ def randomDraw(x_data):
 
         #Pick the names one by one
         for l_i in l_shuffledIndexes:
-            l_occurences = data[l_i, 2:] #The number start at row 3
-            l_maxOc = np.max(l_occurences) + 1
+            l_occurrences = data[l_i, 2:] #The number start at row 3
+            l_maxOc = np.max(l_occurrences) + 1
             # Create a list of possibilities to adjust weights according to the number of occurence
             l_possibilities = list()
             for l_j in range(np.size(l_names)): #Add verification to avoid multiple and self picking
                 if(l_names[l_i] != l_names[l_j] and l_namesFree[l_names[l_j]]
                    and isAllowed(l_names[l_i], names[l_j])):
-                    for _ in range(l_maxOc - l_occurences[l_j]):
+                    for _ in range(l_maxOc - l_occurrences[l_j]):
                         l_possibilities.append(l_names[l_j])
             
             try:
@@ -215,7 +224,7 @@ def randomDraw(x_data):
     return l_storage
 
 
-#%%
+# --------------------------------------------------------------------
 if __name__ == '__main__':
     #aquire data and isolate names and mails
     data = getExcelInfo("secret_santa_no_name.xlsx")
