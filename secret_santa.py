@@ -122,106 +122,113 @@ def gmail_send_message(x_recipient, x_content):
     return l_send_message
     
 # --------------------------------------------------------------------
-#Extract info from excel file
-def getExcelInfo(x_fileName):
+class RandomDraw():
+    def __init__(self):
+        self.m_occurrence = np.array([])
+        self.m_avoidance = np.array([])
+        self.m_names = []
+        self.m_mails = dict()
+        self.m_draw = dict()
+        self.m_nameAvailable = dict()
+
+    # --------------------------------------------------------------------
+    def getExcelInfo(self, x_fileName):
+            """
+            Extracts two tables from the given Excel file: one from the 'occurrence' tab and one from the 'avoidance' tab.
+            Raises a ValueError if either tab does not exist.
+
+            Args:
+                x_fileName (str): Path to the Excel file.
+
+            Note:
+                This function does not return anything. The extracted data is stored in the following object attributes:
+                - self.m_occurrence
+                - self.m_avoidance
+                - self.m_names
+                - self.m_mails
+                - self.m_nameAvailable
+            """
+            try:
+                l_xls = pd.ExcelFile(x_fileName)
+            except Exception as l_err:
+                raise ValueError(f"Could not open Excel file: {l_err}")
+
+            l_required_sheets = ['occurrence', 'avoidance']
+            l_missing_sheets = [l_sheet for l_sheet in l_required_sheets if l_sheet not in l_xls.sheet_names]
+            if l_missing_sheets:
+                raise ValueError(f"Missing required sheet(s): {', '.join(l_missing_sheets)}")
+
+            l_occurrenceDf = pd.read_excel(l_xls, sheet_name='occurrence')
+            l_avoidanceDf = pd.read_excel(l_xls, sheet_name='avoidance')
+
+            self.m_occurrence = l_occurrenceDf.to_numpy()
+            self.m_avoidance = l_avoidanceDf.to_numpy()
+            self.m_names = list(self.m_occurrence[:,0])
+            self.m_mails = dict(zip(self.m_names, list(self.m_occurrence[:,1])))
+            self.m_nameAvailable = {name: True for name in self.m_names}
+
+    # --------------------------------------------------------------------
+    def makePossibilityList(self, x_i):
         """
-        Extracts two tables from the given Excel file: one from the 'occurrence' tab and one from the 'avoidance' tab.
-        Raises a ValueError if either tab does not exist.
+        Generates a list of possible names that can be drawn for the person at index x_i,
+        taking into account occurrence and avoidance constraints.
 
         Args:
-            x_fileName (str): Path to the Excel file.
+            x_i (int): Index of the person for whom to generate the possibility list.
 
         Returns:
-            tuple: (occurrence_table, avoidance_table) as numpy arrays.
+            list: A list of possible names that can be drawn for the person at index x_i.
         """
-        try:
-            l_xls = pd.ExcelFile(x_fileName)
-        except Exception as l_err:
-            raise ValueError(f"Could not open Excel file: {l_err}")
+        l_possibilities = []
+        l_occurrences = self.m_occurrence[x_i, 2:]  # The number start at column 3
+        l_maxOc = np.max(l_occurrences) + 1
 
-        l_required_sheets = ['occurrence', 'avoidance']
-        l_missing_sheets = [l_sheet for l_sheet in l_required_sheets if l_sheet not in l_xls.sheet_names]
-        if l_missing_sheets:
-            raise ValueError(f"Missing required sheet(s): {', '.join(l_missing_sheets)}")
+        # Exclude names based on avoidance table
+        l_avoidanceNames = self.m_avoidance[:,0]  # first column
+        l_avoidanceExclude = set()
+        for l_idx, l_name in enumerate(l_avoidanceNames):
+            if l_name == self.m_names[x_i]:
+                l_avoidanceExclude.add(self.m_avoidance[l_idx, 1])
 
-        l_occurrenceDf = pd.read_excel(l_xls, sheet_name='occurrence')
-        l_avoidanceDf = pd.read_excel(l_xls, sheet_name='avoidance')
+        for l_j in range(len(self.m_names)):
+            candidate = self.m_names[l_j]
+            if (candidate != self.m_names[x_i]
+                and self.m_nameAvailable[candidate]
+                and candidate not in l_avoidanceExclude):
+                for _ in range(l_maxOc - l_occurrences[l_j]):
+                    l_possibilities.append(candidate)
 
-        l_occurrenceTable = l_occurrenceDf.to_numpy()
-        l_avoidanceTable = l_avoidanceDf.to_numpy()
-        return (l_occurrenceTable, l_avoidanceTable)
-   
-# --------------------------------------------------------------------
-def namesRemaining(x_nameDict):
-    """
-    Check if there are any names remaining to be assigned.
-    Args:
-        x_nameDict (dict): Dictionary of names with boolean values.
-    Returns:
-        bool: True if at least one name remains, False otherwise.
-    """
-    l_result = any(x_nameDict.values())
-    return l_result
+        return l_possibilities
 
-# --------------------------------------------------------------------
-def isAllowed(x_name1, x_name2):
-    """
-    Determine if x_name1 is allowed to be assigned to x_name2.
-    Args:
-        x_name1 (str): Name of the giver.
-        x_name2 (str): Name of the receiver.
-    Returns:
-        bool: True if assignment is allowed, False otherwise.
-    """
-    result = True
-    # Function to complete later according to 
-    # tab avoidance in the excel file
-    
-    return result   
 
-# --------------------------------------------------------------------
-def process(x_data):
-    l_storage = dict() #Store the selected name for everyone
-    l_names = list(x_data[:,0])
-    # Dictionary to check if the person is already picked for someone else
-    l_namesFree = dict()
-    for l_name in l_names:
-        l_namesFree[l_name] = True
-    
-    # Use this loop to make sure that every name is picked in the end
-    while namesRemaining(l_namesFree):
-        #List of the indexes of the names (in initial order then shuffled)
-        l_indexes = list()
-        for l_i in range(np.size(l_names)):
-            l_indexes.append(l_i)
-        l_shuffledIndexes = l_indexes.copy()
-        #we want to shuffle indexes, not names
-        random.shuffle(l_shuffledIndexes)
-
-        #Pick the names one by one
-        for l_i in l_shuffledIndexes:
-            l_occurrences = data[l_i, 2:] #The number start at row 3
-            l_maxOc = np.max(l_occurrences) + 1
-            # Create a list of possibilities to adjust weights according to the number of occurence
-            l_possibilities = list()
-            for l_j in range(np.size(l_names)): #Add verification to avoid multiple and self picking
-                if(l_names[l_i] != l_names[l_j] and l_namesFree[l_names[l_j]]
-                   and isAllowed(l_names[l_i], names[l_j])):
-                    for _ in range(l_maxOc - l_occurrences[l_j]):
-                        l_possibilities.append(l_names[l_j])
+    # --------------------------------------------------------------------
+    def process(self):
+        l_finalDraw = dict() #Store the selected name for everyone
+        
+        # Use this loop to make sure that every name is picked in the end and restart in case of failure
+        while any(self.m_nameAvailable.values()):
+            # Reset the availability at the start of each attempt
+            self.m_nameAvailable = {name: True for name in self.m_names}
+            # Create a shuffled list of indexes for random draw order
+            l_shuffledIndexes = list(range(len(self.m_names)))
+            random.shuffle(l_shuffledIndexes)
             
-            try:
-                l_chosenName = random.choice(l_possibilities)
-            except IndexError:
-                print("Possibility list empty, clearing the names and restarting")
-                for l_name in l_names:
-                    l_namesFree[l_name] = True
-                    l_storage[l_name] = ''
-            else:
-                l_namesFree[l_chosenName] = False
-                l_storage[l_names[l_i]] = l_chosenName
+            #Pick the names one by one
+            for l_i in l_shuffledIndexes:
+                # Create a list of possibilities to adjust weights according to the number of occurence
+                l_possibilities = self.makePossibilityList(l_i)
                 
-    return l_storage
+                try:
+                    l_chosenName = random.choice(l_possibilities)
+                except IndexError:
+                    print("Possibility list empty, clearing the names and restarting")
+                    for l_name in self.m_names:
+                        self.m_nameAvailable[l_name] = True
+                        l_finalDraw[l_name] = ''
+                else:
+                    self.m_nameAvailable[l_chosenName] = False
+                    l_finalDraw[self.m_names[l_i]] = l_chosenName
+        return l_finalDraw
 
 
 # --------------------------------------------------------------------
