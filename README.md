@@ -2,6 +2,15 @@
 
 Python script to generate a weighted draw for a Secret Santa and automatically send an email to everyone.
 
+## Environment
+
+This project runs using Python. I use `conda` to create an environment that includes all the required packages.
+You can create the conda environment with the [environment file](./environment.yml) by running :
+
+```bash
+conda env create -f environment.yml
+```
+
 ## Weighted draw
 
 The algorithm aims to generate a weighted draw from an Excel file containing the name and email address of all the people to be considered, as well as the number of times each person has given a gift to all the other people. The weighted draw increases the probability of choosing someone you haven't chosen often, without prohibiting the same person from being drawn twice in a row.

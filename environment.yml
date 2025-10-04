@@ -1,0 +1,11 @@
+name: pySanta
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - pandas
+  - numpy
+  - google-api-python-client
+  - google-auth-oauthlib
+  - odfpy
