@@ -8,10 +8,10 @@
 # Need to clarify all the imports
 from __future__ import print_function
 
+# To locate the credentials file
 import os.path
-import base64
-from email.message import EmailMessage
 
+# Libraries used for the gmail API
 import google.auth
 from google.auth.transport.requests import Request
 from google.auth import credentials
@@ -19,108 +19,121 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from email.message import EmailMessage
+import base64
 
-# Libraries used for reading the excel 
-# and the random draw
+# Libraries used for reading the excel and the random draw
 import pandas as pd
 import numpy as np
 import random
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ['https://mail.google.com/']
-
-# --------------------------------------------------------------------
-def checkAPI():
-    """Shows basic usage of the Gmail API.
-    Lists the user's Gmail labels.
+# ----------------------------------------------------
+class MailManager:
     """
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
-
-    try:
-        # Call the Gmail API
-        service = build('gmail', 'v1', credentials=creds)
-        results = service.users().labels().list(userId='me').execute()
-        labels = results.get('labels', [])
-
-        if not labels:
-            print('No labels found.')
-            return
-        print('Labels:')
-        for label in labels:
-            print(label['name'])
-
-    except HttpError as error:
-        # TODO(developer) - Handle errors from gmail API.
-        print(f'An error occurred: {error}')
-
-# --------------------------------------------------------------------
-def gmail_send_message(x_recipient, x_content):
+    A class to manage Gmail API interactions, including checking API access, configuring and sending emails.
     """
-    Sends an email using the Gmail API to a specified recipient with the provided content.
 
-    Args:
-        x_recipient (str): The email address of the recipient.
-        x_content (str): The content of the email message.
+    # --------------------------------------------------------------------
+    def __init__(self):
+        self.m_scopes = ['https://mail.google.com/']
+        self.m_creds = None
+        self.m_message = EmailMessage()
 
-    Returns:
-        dict or None: The response from the Gmail API if the message is sent successfully, or None if an error occurs.
-    """
-    if os.path.exists('token.json'):
-        l_creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not l_creds or not l_creds.valid:
-        if l_creds and l_creds.expired and l_creds.refresh_token:
-            l_creds.refresh(Request())
-        else:
-            l_flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            l_creds = l_flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as l_token:
-            l_token.write(l_creds.to_json())
+    # --------------------------------------------------------------------
+    def setMailAndSubject(self, x_mail, x_subject):
+        """Sets the sender email and subject for the email message.
 
+        Args:
+            x_mail (str): The sender's email address.
+            x_subject (str): The subject of the email.
+        """
+        self.m_message['From'] = x_mail
+        self.m_message['Subject'] = x_subject
 
-    try:
-        l_service = build('gmail', 'v1', credentials=l_creds)
-        l_message = EmailMessage()
+    # --------------------------------------------------------------------
+    def setCreds(self):
+        """Sets up the credentials for Gmail API access."""
 
-        l_message.set_content(x_content)
+        self.m_creds = None
+        # The file token.json stores the user's access and refresh tokens, and is
+        # created automatically when the authorization flow completes for the first
+        # time.
+        if os.path.exists('token.json'):
+            self.m_creds = Credentials.from_authorized_user_file('token.json', self.m_scopes)
+        # If there are no (valid) credentials available, let the user log in.
+        if not self.m_creds or not self.m_creds.valid:
+            if self.m_creds and self.m_creds.expired and self.m_creds.refresh_token:
+                self.m_creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    'credentials.json', self.m_scopes)
+                self.m_creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open('token.json', 'w') as token:
+                token.write(self.m_creds.to_json())
+        return (self.m_creds and self.m_creds.valid)
 
-        l_message['To'] = x_recipient
-        l_message['From'] = "your.email@gmail.com" #replace with your own mail
-        l_message['Subject'] = "Secret Santa"
+    # --------------------------------------------------------------------
+    def checkAPI(self):
+        """Shows basic usage of the Gmail API.
+        Lists the user's Gmail labels.
+        """
+        if not self.setCreds():
+            raise RuntimeError("Could not set the credentials for the Gmail API")
+        
+        try:
+            # Call the Gmail API
+            l_service = build('gmail', 'v1', credentials=self.m_creds)
+            l_results = l_service.users().labels().list(userId='me').execute()
+            l_labels = l_results.get('labels', [])
 
-        # encoded message
-        l_encoded_message = base64.urlsafe_b64encode(l_message.as_bytes()).decode()
+            if not l_labels:
+                print('No labels found.')
+                return
+            print('Labels:')
+            for l_label in l_labels:
+                print(l_label['name'])
 
-        l_create_message = {
-            'raw': l_encoded_message
-        }
-        # pylint: disable=E1101
-        l_send_message = (l_service.users().messages().send
-                        (userId="me", body=l_create_message).execute())
-        print(F'Message Id: {l_send_message["id"]}')
-    except HttpError as l_error:
-        print(F'An error occurred: {l_error}')
-        l_send_message = None
-    return l_send_message
-    
+        except HttpError as l_error:
+            # TODO(developer) - Handle errors from gmail API.
+            print(f'An error occurred: {l_error}')
+
+    # --------------------------------------------------------------------
+    def gmail_send_message(self, x_recipient, x_content):
+        """
+        Sends an email using the Gmail API to a specified recipient with the provided content.
+
+        Args:
+            x_recipient (str): The email address of the recipient.
+            x_content (str): The content of the email message.
+
+        Returns:
+            dict or None: The response from the Gmail API if the message is sent successfully, or None if an error occurs.
+        """
+        if not self.setCreds():
+            raise RuntimeError("Could not set the credentials for the Gmail API")
+
+        try:
+            l_service = build('gmail', 'v1', credentials=self.m_creds)
+
+            # Prepare the content
+            self.m_message.set_content(x_content)
+            self.m_message['To'] = x_recipient
+            # encoded message
+            l_encodedMessage = base64.urlsafe_b64encode(self.m_message.as_bytes()).decode()
+
+            l_create_message = {
+                'raw': l_encodedMessage
+            }
+            # pylint: disable=E1101
+            l_sendMessage = (l_service.users().messages().send
+                            (userId="me", body=l_create_message).execute())
+            print(F'Message Id: {l_sendMessage["id"]}')
+        except HttpError as l_error:
+            print(F'An error occurred: {l_error}')
+            l_sendMessage = None
+        return l_sendMessage
+
 # --------------------------------------------------------------------
 class RandomDraw():
     """
@@ -269,23 +282,27 @@ class RandomDraw():
 
 # --------------------------------------------------------------------
 if __name__ == '__main__':
-    #aquire data and isolate names and mails
-    data = getExcelInfo("secret_santa_no_name.xlsx")
-    names = data[:,0]
-    mails = dict()
-    for i in range(np.size(names)):
-        mails[names[i]] = data[i,1]
-    
-    #choice for everyone
-    tirage = selectNames(data)
-    for name in tirage.keys():        
-        print("Trying to send mail to : " + name)
+    draw = RandomDraw()
+    mailer = MailManager()
+
+    # Perform the draw
+    draw.getExcelInfo("template.ods")
+    finalDraw = draw.process()
+    mails = draw.m_mails
+
+    mailer.setMailAndSubject("your.email@gmail.com", "Secret Santa")
+    # mailer.checkAPI() # Uncomment this line to check the API connection
+
+    for name in finalDraw.keys():
+        print(f"Trying to send mail to : {name}")
         try:
             # Commented during development phase
+            content = f"Hello {name},\n\nYou have been chosen to give a gift to {finalDraw[name]}!\n\nHappy gifting!\n"
+            mailer.gmail_send_message(mails[name], content)
             # gmail_send_message(mails[name],createMsg(tirage[name]))
-            print('Mail sent succesfully to %s'%(name)) 
+            print(f'Mail sent successfully to {name}')
         except Exception as ex:
-            print('Something went wrong... : ', ex)
+            print(f'Something went wrong... : {ex}')
 
 
 
