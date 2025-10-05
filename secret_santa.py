@@ -37,7 +37,8 @@ class MailManager:
     def __init__(self):
         self.m_scopes = ['https://mail.google.com/']
         self.m_creds = None
-        self.m_message = EmailMessage()
+        self.m_from = ''
+        self.m_subject = ''
 
     # --------------------------------------------------------------------
     def setMailAndSubject(self, x_mail, x_subject):
@@ -47,8 +48,8 @@ class MailManager:
             x_mail (str): The sender's email address.
             x_subject (str): The subject of the email.
         """
-        self.m_message['From'] = x_mail
-        self.m_message['Subject'] = x_subject
+        self.m_from = x_mail
+        self.m_subject = x_subject
 
     # --------------------------------------------------------------------
     def setCreds(self):
@@ -99,7 +100,7 @@ class MailManager:
             print(f'An error occurred: {l_error}')
 
     # --------------------------------------------------------------------
-    def gmail_send_message(self, x_recipient, x_content):
+    def gmailSendMessage(self, x_recipient, x_content):
         """
         Sends an email using the Gmail API to a specified recipient with the provided content.
 
@@ -117,10 +118,13 @@ class MailManager:
             l_service = build('gmail', 'v1', credentials=self.m_creds)
 
             # Prepare the content
-            self.m_message.set_content(x_content)
-            self.m_message['To'] = x_recipient
+            l_message = EmailMessage()
+            l_message.set_content(x_content)
+            l_message['To'] = x_recipient
+            l_message['From'] = self.m_from
+            l_message['Subject'] = self.m_subject
             # encoded message
-            l_encodedMessage = base64.urlsafe_b64encode(self.m_message.as_bytes()).decode()
+            l_encodedMessage = base64.urlsafe_b64encode(l_message.as_bytes()).decode()
 
             l_create_message = {
                 'raw': l_encodedMessage
@@ -298,8 +302,7 @@ if __name__ == '__main__':
         try:
             # Commented during development phase
             content = f"Hello {name},\n\nYou have been chosen to give a gift to {finalDraw[name]}!\n\nHappy gifting!\n"
-            mailer.gmail_send_message(mails[name], content)
-            # gmail_send_message(mails[name],createMsg(tirage[name]))
+            mailer.gmailSendMessage(mails[name], content)
             print(f'Mail sent successfully to {name}')
         except Exception as ex:
             print(f'Something went wrong... : {ex}')
