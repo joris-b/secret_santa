@@ -123,6 +123,23 @@ def gmail_send_message(x_recipient, x_content):
     
 # --------------------------------------------------------------------
 class RandomDraw():
+    """
+    A class to manage the Secret Santa random draw process.
+
+    This class handles the extraction of participant and avoidance data from Excel files,
+    manages the state of available names, and generates possible assignments while respecting
+    occurrence and avoidance constraints.
+
+    Attributes:
+        m_occurrence (np.ndarray): Array containing occurrence data from the Excel file.
+        m_avoidance (np.ndarray): Array containing avoidance data from the Excel file.
+        m_names (list): List of participant names.
+        m_mails (dict): Dictionary mapping names to email addresses.
+        m_draw (dict): Dictionary storing the final draw assignments.
+        m_nameAvailable (dict): Dictionary tracking which names are still available for assignment.
+    """
+
+    # --------------------------------------------------------------------
     def __init__(self):
         self.m_occurrence = np.array([])
         self.m_avoidance = np.array([])
@@ -130,6 +147,11 @@ class RandomDraw():
         self.m_mails = dict()
         self.m_draw = dict()
         self.m_nameAvailable = dict()
+
+    # --------------------------------------------------------------------
+    def resetNameAvailability(self):
+        """Resets the availability status of all participant names."""
+        self.m_nameAvailable = {name: True for name in self.m_names}
 
     # --------------------------------------------------------------------
     def getExcelInfo(self, x_fileName):
@@ -165,7 +187,7 @@ class RandomDraw():
             self.m_avoidance = l_avoidanceDf.to_numpy()
             self.m_names = list(self.m_occurrence[:,0])
             self.m_mails = dict(zip(self.m_names, list(self.m_occurrence[:,1])))
-            self.m_nameAvailable = {name: True for name in self.m_names}
+            self.resetNameAvailability()
 
     # --------------------------------------------------------------------
     def makePossibilityList(self, x_i):
@@ -203,12 +225,22 @@ class RandomDraw():
 
     # --------------------------------------------------------------------
     def process(self):
+        """
+        Assigns Secret Santa recipients to each participant based on occurrence and avoidance constraints.
+
+        Returns:
+            dict: A dictionary mapping each participant's name to their assigned recipient's name.
+        """
+
         l_finalDraw = dict() #Store the selected name for everyone
+        self.resetNameAvailability()
         
         # Use this loop to make sure that every name is picked in the end and restart in case of failure
-        while any(self.m_nameAvailable.values()):
+        # Add a counter to avoid infinite loops
+        l_attemptCounter = 0
+        while any(self.m_nameAvailable.values()) and l_attemptCounter < 100:
             # Reset the availability at the start of each attempt
-            self.m_nameAvailable = {name: True for name in self.m_names}
+            self.resetNameAvailability()
             # Create a shuffled list of indexes for random draw order
             l_shuffledIndexes = list(range(len(self.m_names)))
             random.shuffle(l_shuffledIndexes)
@@ -228,6 +260,10 @@ class RandomDraw():
                 else:
                     self.m_nameAvailable[l_chosenName] = False
                     l_finalDraw[self.m_names[l_i]] = l_chosenName
+            l_attemptCounter += 1
+        
+        if l_attemptCounter == 100:
+            raise RuntimeError("Failed to complete the draw after 100 attempts. Please check the constraints.")
         return l_finalDraw
 
 
