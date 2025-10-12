@@ -17,6 +17,7 @@ from google.auth.transport.requests import Request
 from google.auth import credentials
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from email.message import EmailMessage
@@ -64,10 +65,17 @@ class MailManager:
         # If there are no (valid) credentials available, let the user log in.
         if not self.m_creds or not self.m_creds.valid:
             if self.m_creds and self.m_creds.expired and self.m_creds.refresh_token:
-                self.m_creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', self.m_scopes)
+                try:
+                    self.m_creds.refresh(Request())
+                except RefreshError:
+                    # Refresh token is invalid or revoked: force re-authentication
+                    try:
+                        os.remove('token.json')
+                    except OSError as l_e:
+                        print(f"Error removing token.json: {l_e}")
+                    self.m_creds = None
+            if not self.m_creds:
+                flow = InstalledAppFlow.from_client_secrets_file('credentials.json', self.m_scopes)
                 self.m_creds = flow.run_local_server(port=0)
             # Save the credentials for the next run
             with open('token.json', 'w') as token:
