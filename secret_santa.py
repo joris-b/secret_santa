@@ -42,7 +42,7 @@ class MailManager:
         self.m_subject = ''
 
     # --------------------------------------------------------------------
-    def setMailAndSubject(self, x_mail, x_subject):
+    def setMailAndSubject(self, x_mail: str, x_subject: str):
         """Sets the sender email and subject for the email message.
 
         Args:
@@ -53,7 +53,7 @@ class MailManager:
         self.m_subject = x_subject
 
     # --------------------------------------------------------------------
-    def setCreds(self):
+    def setCreds(self) -> bool:
         """Sets up the credentials for Gmail API access."""
 
         self.m_creds = None
@@ -108,7 +108,7 @@ class MailManager:
             print(f'An error occurred: {l_error}')
 
     # --------------------------------------------------------------------
-    def gmailSendMessage(self, x_recipient, x_content):
+    def gmailSendMessage(self, x_recipient: str, x_content: str) -> dict:
         """
         Sends an email using the Gmail API to a specified recipient with the provided content.
 
@@ -179,7 +179,7 @@ class RandomDraw():
         self.m_nameAvailable = {name: True for name in self.m_names}
 
     # --------------------------------------------------------------------
-    def getExcelInfo(self, x_fileName):
+    def getExcelInfo(self, x_fileName: str):
             """
             Extracts two tables from the given Excel file: one from the 'occurrence' tab and one from the 'avoidance' tab.
             Raises a ValueError if either tab does not exist.
@@ -215,7 +215,7 @@ class RandomDraw():
             self.resetNameAvailability()
 
     # --------------------------------------------------------------------
-    def makePossibilityList(self, x_i):
+    def makePossibilityList(self, x_i: int) -> list:
         """
         Generates a list of possible names that can be drawn for the person at index x_i,
         taking into account occurrence and avoidance constraints.
@@ -227,15 +227,16 @@ class RandomDraw():
             list: A list of possible names that can be drawn for the person at index x_i.
         """
         l_possibilities = []
-        l_occurrences = self.m_occurrence[x_i, 2:]  # The number start at column 3
+        l_occurrences = self.m_occurrence[x_i, 2:].astype(int)  # The number start at column 3
         l_maxOc = np.max(l_occurrences) + 1
 
         # Exclude names based on avoidance table
-        l_avoidanceNames = self.m_avoidance[:,0]  # first column
         l_avoidanceExclude = set()
-        for l_idx, l_name in enumerate(l_avoidanceNames):
-            if l_name == self.m_names[x_i]:
-                l_avoidanceExclude.add(self.m_avoidance[l_idx, 1])
+        if self.m_avoidance.size:
+            l_avoidanceNames = self.m_avoidance[:,0]  # first column
+            for l_idx, l_name in enumerate(l_avoidanceNames):
+                if l_name == self.m_names[x_i]:
+                    l_avoidanceExclude.add(self.m_avoidance[l_idx, 1])
 
         for l_j in range(len(self.m_names)):
             candidate = self.m_names[l_j]
@@ -272,7 +273,7 @@ class RandomDraw():
             
             #Pick the names one by one
             for l_i in l_shuffledIndexes:
-                # Create a list of possibilities to adjust weights according to the number of occurence
+                # Create a list of possibilities to adjust weights according to the number of occurrence
                 l_possibilities = self.makePossibilityList(l_i)
                 
                 try:
@@ -314,7 +315,6 @@ if __name__ == '__main__':
             print(f'Mail sent successfully to {name}')
         except Exception as ex:
             print(f'Something went wrong... : {ex}')
-
 
 
 
