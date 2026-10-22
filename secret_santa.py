@@ -76,7 +76,7 @@ class MailManager:
                     self.m_creds = None
             if not self.m_creds:
                 flow = InstalledAppFlow.from_client_secrets_file('credentials.json', self.m_scopes)
-                self.m_creds = flow.run_local_server(port=0)
+                self.m_creds = flow.run_local_server(port=0, open_browser=False)
             # Save the credentials for the next run
             with open('token.json', 'w') as token:
                 token.write(self.m_creds.to_json())
@@ -315,6 +315,5 @@ if __name__ == '__main__':
             print(f'Mail sent successfully to {name}')
         except Exception as ex:
             print(f'Something went wrong... : {ex}')
-
 
 

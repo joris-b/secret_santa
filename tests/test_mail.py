@@ -24,6 +24,24 @@ def test_set_mail_and_subject():
     assert mailer.m_subject == "Secret Santa"
 
 
+def test_set_creds_does_not_launch_browser(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    mailer = MailManager()
+    credentials = MagicMock(valid=True)
+    flow = MagicMock()
+    flow.run_local_server.return_value = credentials
+    monkeypatch.setattr(
+        secret_santa.InstalledAppFlow,
+        "from_client_secrets_file",
+        MagicMock(return_value=flow),
+    )
+
+    assert mailer.setCreds()
+
+    flow.run_local_server.assert_called_once_with(port=0, open_browser=False)
+    assert (tmp_path / "token.json").read_text() == credentials.to_json.return_value
+
+
 def test_gmail_send_message_builds_and_sends_email(monkeypatch, capsys):
     mailer = MailManager()
     mailer.setMailAndSubject("sender@example.com", "Secret Santa")
